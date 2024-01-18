@@ -1,0 +1,2 @@
+# casstry
+Some cassandra project
