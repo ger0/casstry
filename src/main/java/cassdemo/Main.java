@@ -5,6 +5,8 @@ import java.util.Properties;
 
 import cassdemo.backend.BackendException;
 import cassdemo.backend.BackendSession;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class Main {
 
@@ -25,16 +27,11 @@ public class Main {
 		}
 			
 		BackendSession session = new BackendSession(contactPoint, keyspace);
+		Logger logger = LoggerFactory.getLogger(BackendSession.class);
 
-		session.upsertUser("PP", "Adam", 609, "A St");
-		session.upsertUser("PP", "Ola", 509, null);
-		session.upsertUser("UAM", "Ewa", 720, "B St");
-		session.upsertUser("PP", "Kasia", 713, "C St");
-
-		String output = session.selectAll();
-		System.out.println("Users: \n" + output);
-
-		session.deleteAll();
+		session.upsertList("Wakacje", 10);
+		logger.info(session.selectAllLists());
+		session.deleteAllLists();
 
 		System.exit(0);
 	}
