@@ -29,9 +29,11 @@ public class Main {
 		BackendSession session = new BackendSession(contactPoint, keyspace);
 		Logger logger = LoggerFactory.getLogger(BackendSession.class);
 
-		session.upsertList("Wakacje", 10);
+		InputProcessor inputProcessor = new InputProcessor(System.in, session);
+		inputProcessor.processInput();
+		/*session.upsertList("Wakacje", 10);
 		logger.info(session.selectAllLists());
-		session.deleteAllLists();
+		session.deleteAllLists();*/
 
 		System.exit(0);
 	}
