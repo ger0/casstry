@@ -9,7 +9,7 @@ public class ToStringer {
     public static String proposalToString(Row row){
         StringBuilder sb = new StringBuilder();
         sb.append(Integer.toString(row.getInt("student_id")));
-        sb.append("\t");
+        sb.append("\t\t");
         sb.append(row.getString("list_name"));
         sb.append("\t");
         //problem in datastax codec
@@ -19,14 +19,15 @@ public class ToStringer {
         sb.append("[ ");
         for(int placement:placements){
             sb.append(Integer.toString(placement)+" ");
-        }
+        } 
         sb.append("]");
         return sb.toString();
     }
 
     public static String proposalsToString(ResultSet rs){
         StringBuilder sb = new StringBuilder();
-        sb.append("student_id\tlist_name\tsending_time\tplacements\n");
+        sb.append("student_id\tlist_name\tplacements\n");
+        //sb.append("student_id\tlist_name\tsending_time\tplacements\n");
         for(Row proposal: rs){
             sb.append(proposalToString(proposal)+"\n");
         }
