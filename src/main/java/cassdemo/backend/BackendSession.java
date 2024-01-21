@@ -221,6 +221,9 @@ public class BackendSession {
 		BoundStatement bs = new BoundStatement(INCLUDE_PROPOSAL_INTO_LIST);
 		for (int placement : placements) {
 			Integer replaced = selectOccupier(listName, placement);
+			if(replaced == student_id){
+				return; //this student already holds this place
+			}
 			bs.bind().setInt(0, placement).setInt(1, student_id).setInt(2, placement).setTimestamp(3, timestamp)
 					.setString(4, listName).setInt(5, placement).setTimestamp(6, timestamp);
 			ResultSet rs = null;
