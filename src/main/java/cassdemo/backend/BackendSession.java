@@ -216,6 +216,7 @@ public class BackendSession {
 				}
 			}
 		}
+		logger.info("Applied "+student_id+"'s proposal into "+listName);
 	}
 
 	public void deleteAllLists() throws BackendException {
