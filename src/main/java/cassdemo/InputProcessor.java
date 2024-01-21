@@ -1,6 +1,7 @@
 package cassdemo;
 
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.Scanner;
 
 import cassdemo.backend.BackendException;
@@ -73,6 +74,8 @@ public class InputProcessor {
         System.out.println("get lists - displays lists");
         System.out.println("get proposals - displays proposals");
         System.out.println("upsert list NAME MAX_SIZE - upserts a list named NAME with MAX_SIZE of places");
+        System.out.println("upsert proposal STUDENT_ID LIST_NAME PLACEMENT_1 PLACEMENT_2 ... - proposes PLACEMENTS for sepcifeid student in specified list");
+        System.out.println("\texample: upsert proposal 123456 seminarium 1 5 9 2 6 10 3 7 11 4 8 12");
         System.out.println("exit - finishes execution of this program");
     }
 
@@ -94,6 +97,13 @@ public class InputProcessor {
         switch (commandStrings[1]) {
             case "list":
                 session.upsertList(commandStrings[2], Integer.parseInt(commandStrings[3]));
+                return;
+            case "proposal":
+                ArrayList<Integer> placements = new ArrayList<Integer>(commandStrings.length - 4);
+                for (int i = 4; i < commandStrings.length; ++i) {
+                    placements.add(Integer.parseInt(commandStrings[i]));
+                }
+                session.upsertProposal(Integer.parseInt(commandStrings[2]), commandStrings[3], placements);
                 return;
             default:
                 System.out.println("Cannot upsert: " + commandStrings[1]);

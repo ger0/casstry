@@ -11,6 +11,12 @@ import com.datastax.driver.core.Row;
 import com.datastax.driver.core.Session;
 
 import java.util.Collections;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import javax.xml.crypto.Data;
 
 /*
  * For error handling done right see: 
@@ -48,6 +54,7 @@ public class BackendSession {
 	private static PreparedStatement INSERT_INTO_PROPOSALS;
 	private static PreparedStatement DELETE_ALL_FROM_LISTS;
 	private static PreparedStatement DELETE_ALL_FROM_PROPOSALS;
+	private static PreparedStatement INCLUDE_PROPOSAL_INTO_LIST;
 
 	private static final String LIST_FORMAT = "- %-10s %-16s\n";
 	private static final String PROPOSAL_FORMAT = "-%-10s  %-16s %-10s %-10s\n";
@@ -57,18 +64,21 @@ public class BackendSession {
 	private void prepareStatements() throws BackendException {
 
 		try {
-			SELECT_ALL_FROM_LISTS 		= session.prepare("SELECT * FROM lists;");
-			SELECT_ALL_FROM_PROPOSALS 	= session.prepare("SELECT * FROM proposals;");
+			SELECT_ALL_FROM_LISTS = session.prepare("SELECT * FROM lists;");
+			SELECT_ALL_FROM_PROPOSALS = session.prepare("SELECT * FROM proposals;");
 
 			INSERT_INTO_LISTS = session
-					.prepare("INSERT INTO lists (name, max_size, students)" +
-							"VALUES (?, ?, ?);");
+					.prepare("INSERT INTO lists (name, max_size, students, timestamps)" +
+							"VALUES (?, ?, ?, ?);");
 			INSERT_INTO_PROPOSALS = session
 					.prepare("INSERT INTO proposals (student_id, list_name, placements, sending_time)" +
-							"VALUES (?, ?, [], ?);");
+							"VALUES (?, ?, ?, ?);");
 
-			DELETE_ALL_FROM_LISTS 		= session.prepare("TRUNCATE lists;");
-			DELETE_ALL_FROM_PROPOSALS 	= session.prepare("TRUNCATE proposals;");
+			DELETE_ALL_FROM_LISTS = session.prepare("TRUNCATE lists;");
+			DELETE_ALL_FROM_PROPOSALS = session.prepare("TRUNCATE proposals;");
+
+			INCLUDE_PROPOSAL_INTO_LIST = session
+					.prepare("UPDATE lists set students[ ? ] = ?, timestamps[ ? ]= ? where name = ? if timestamps[ ? ] > ?;");
 		} catch (Exception e) {
 			throw new BackendException("Could not prepare statements. " + e.getMessage() + ".", e);
 		}
@@ -79,24 +89,22 @@ public class BackendSession {
 	private void setupTables(String keyspace) throws BackendException {
 		try {
 			session.execute("CREATE KEYSPACE IF NOT EXISTS " + keyspace +
-					" WITH REPLICATION = { 'class' : 'SimpleStrategy', 'replication_factor' : 3 }; "
-			);
+					" WITH REPLICATION = { 'class' : 'SimpleStrategy', 'replication_factor' : 3 }; ");
 			session.execute("USE " + keyspace + ";");
 			session.execute(
 					"CREATE TABLE IF NOT EXISTS Lists (" +
 							"name varchar," +
 							"max_size int," +
-							"students list<tuple<int, timestamp>>," +
-							"PRIMARY KEY (name)); "
-			);
+							"students map<int, int>," +
+							"timestamps map<int, timestamp>, " +
+							"PRIMARY KEY (name)); ");
 			session.execute(
 					"CREATE TABLE IF NOT EXISTS Proposals (" +
 							" student_id int,		 " +
 							" list_name varchar,	 " +
 							" placements list<int>,  " +
 							" sending_time timestamp," +
-							" PRIMARY KEY(student_id, list_name));"
-			);
+							" PRIMARY KEY(student_id, list_name));");
 		} catch (Exception e) {
 			throw new BackendException("Failed to initialise tables. " + e.getMessage() + ".", e);
 		}
@@ -117,15 +125,16 @@ public class BackendSession {
 		}
 
 		for (Row row : rs) {
-			String name 	= row.getString("name");
-			int max_size 	= row.getInt("max_size");
-			// List students 	= row.getList("students");
+			String name = row.getString("name");
+			int max_size = row.getInt("max_size");
+			// List students = row.getList("students");
 
 			builder.append(String.format(LIST_FORMAT, name, max_size));
 		}
 
 		return builder.toString();
 	}
+
 	public String selectAllProposals() throws BackendException {
 		StringBuilder builder = new StringBuilder();
 		BoundStatement bs = new BoundStatement(SELECT_ALL_FROM_PROPOSALS);
@@ -152,8 +161,10 @@ public class BackendSession {
 
 	public void upsertList(String name, int max_size) throws BackendException {
 		BoundStatement bs = new BoundStatement(INSERT_INTO_LISTS);
-		//bs.bind(name, max_size, "[]");
-		bs.bind().setString(0, name).setInt(1, max_size).setList(2, Collections.emptyList());
+		// bs.bind(name, max_size, "[]");
+		Map<Integer, Integer> students = new HashMap<Integer, Integer>();
+		bs.bind().setString(0, name).setInt(1, max_size).setMap(2, initialStudentsMap(max_size)).setMap(3,
+				initialTimestampMap(max_size));
 
 		try {
 			session.execute(bs);
@@ -162,6 +173,42 @@ public class BackendSession {
 		}
 
 		logger.info("List " + name + " upserted");
+	}
+
+	public void upsertProposal(int studentId, String listName, List<Integer> placements) throws BackendException {
+		BoundStatement bs = new BoundStatement(INSERT_INTO_PROPOSALS);
+		// bs.bind(name, max_size, "[]");
+		Date timestamp = new Date(System.currentTimeMillis());
+		includeProposalIntoList(studentId, listName, placements, timestamp);
+		bs.bind().setInt(0, studentId).setString(1, listName).setList(2, placements).setTimestamp(3, timestamp);
+
+		try {
+			session.execute(bs);
+		} catch (Exception e) {
+			throw new BackendException("Could not perform an upsert on list. " + e.getMessage() + ".", e);
+		}
+
+		logger.info("Student: " + Integer.toString(studentId) + " made proposal into: " + listName);
+	}
+
+	public void includeProposalIntoList(int student_id, String listName, List<Integer> placements, Date timestamp)
+			throws BackendException {
+		BoundStatement bs = new BoundStatement(INCLUDE_PROPOSAL_INTO_LIST);
+		for (int placement : placements) {
+			bs.bind().setInt(0, placement).setInt(1, student_id).setInt(2, placement).setTimestamp(3, timestamp)
+					.setString(4, listName).setInt(5, placement).setTimestamp(6, timestamp);
+			ResultSet rs = null;
+			try {
+				rs = session.execute(bs);
+			} catch (Exception e) {
+				throw new BackendException("Could not include proposal. " + e.getMessage() + ".", e);
+			}
+			for (Row row : rs) {
+				if (row.getBool("[applied]")) {
+					return;
+				}
+			}
+		}
 	}
 
 	public void deleteAllLists() throws BackendException {
@@ -186,4 +233,24 @@ public class BackendSession {
 		}
 	}
 
+	private Map<Integer, Integer> initialStudentsMap(int max_size) {
+		return Collections.emptyMap();
+		/*
+		 * HashMap<Integer, Integer> ret = new HashMap<>();
+		 * int noneStudent = -1;
+		 * for(int i=1; i<=max_size;++i){
+		 * ret.put(i, noneStudent);
+		 * }
+		 * return ret;
+		 */
+	}
+
+	private Map<Integer, Date> initialTimestampMap(int max_size) {
+		HashMap<Integer, Date> ret = new HashMap<>();
+		Date maxDate = new Date(Long.MAX_VALUE);
+		for (int i = 1; i <= max_size; ++i) {
+			ret.put(i, maxDate);
+		}
+		return ret;
+	}
 }
