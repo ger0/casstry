@@ -53,6 +53,9 @@ public class InputProcessor {
                 case "delete":
                     executeDelete(commandStrings);
                     return;
+                case "reapply":
+                    reapply(commandStrings);
+                    return;
                 case "exit":
                     executeExit();
                     return;
@@ -76,8 +79,10 @@ public class InputProcessor {
         System.out.println("get lists - displays lists");
         System.out.println("get proposals - displays proposals");
         System.out.println("upsert list NAME MAX_SIZE - upserts a list named NAME with MAX_SIZE of places");
-        System.out.println("upsert proposal STUDENT_ID LIST_NAME PLACEMENT_1 PLACEMENT_2 ... - proposes PLACEMENTS for sepcifeid student in specified list");
+        System.out.println(
+                "upsert proposal STUDENT_ID LIST_NAME PLACEMENT_1 PLACEMENT_2 ... - proposes PLACEMENTS for sepcifeid student in specified list");
         System.out.println("\texample: upsert proposal 123456 seminarium 1 5 9 2 6 10 3 7 11 4 8 12");
+        System.out.println("reapply STUDENT_ID LIST_NAME - reapplies student's proposal into specified list");
         System.out.println("exit - finishes execution of this program");
         System.out.println();
     }
@@ -94,6 +99,10 @@ public class InputProcessor {
                 System.out.println("Cannot get: " + commandStrings[1]);
                 return;
         }
+    }
+
+    private void reapply(String[] commandStrings) throws BackendException, ArrayIndexOutOfBoundsException {
+        session.reapplyProposal(Integer.parseInt(commandStrings[1]), commandStrings[2]);
     }
 
     private void executeUpsert(String[] commandStrings) throws BackendException, ArrayIndexOutOfBoundsException {
