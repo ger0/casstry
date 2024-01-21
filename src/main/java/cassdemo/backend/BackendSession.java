@@ -10,6 +10,8 @@ import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.Row;
 import com.datastax.driver.core.Session;
 
+import cassdemo.ToStringer;
+
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
@@ -58,10 +60,6 @@ public class BackendSession {
 	private static PreparedStatement INCLUDE_PROPOSAL_INTO_LIST;
 	private static PreparedStatement SELECT_OCCUPIER;
 
-	private static final String LIST_FORMAT = "- %-10s %-16s\n";
-	private static final String PROPOSAL_FORMAT = "-%-10s  %-16s %-10s %-10s\n";
-	// private static final SimpleDateFormat df = new
-	// SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 
 	private void prepareStatements() throws BackendException {
 
@@ -119,7 +117,6 @@ public class BackendSession {
 	}
 
 	public String selectAllLists() throws BackendException {
-		StringBuilder builder = new StringBuilder();
 		BoundStatement bs = new BoundStatement(SELECT_ALL_FROM_LISTS);
 
 		ResultSet rs = null;
@@ -129,20 +126,10 @@ public class BackendSession {
 		} catch (Exception e) {
 			throw new BackendException("Could not perform a query. " + e.getMessage() + ".", e);
 		}
-
-		for (Row row : rs) {
-			String name = row.getString("name");
-			int max_size = row.getInt("max_size");
-			// List students = row.getList("students");
-
-			builder.append(String.format(LIST_FORMAT, name, max_size));
-		}
-
-		return builder.toString();
+		return ToStringer.listsToString(rs);
 	}
 
 	public String selectAllProposals() throws BackendException {
-		StringBuilder builder = new StringBuilder();
 		BoundStatement bs = new BoundStatement(SELECT_ALL_FROM_PROPOSALS);
 
 		ResultSet rs = null;
@@ -153,16 +140,7 @@ public class BackendSession {
 			throw new BackendException("Could not perform a query. " + e.getMessage() + ".", e);
 		}
 
-		for (Row row : rs) {
-			int student_id = row.getInt("student_id");
-			String name = row.getString("list_name");
-			String placements = row.getString("placements");
-			String timestamp = row.getString("sending_time");
-
-			builder.append(String.format(PROPOSAL_FORMAT, student_id, name, placements, timestamp));
-		}
-
-		return builder.toString();
+		return ToStringer.proposalsToString(rs);
 	}
 
 	private Row selectFromProposals(int student_id, String listName) throws BackendException {
@@ -178,9 +156,6 @@ public class BackendSession {
 			throw new BackendException("Could not perform a query. " + e.getMessage() + ".", e);
 		}
 		row = rs.one();
-		if(row == null){
-			System.out.println("There is no "+Integer.toString(student_id)+" in proposals");
-		}
 		return row;
 	}
 
@@ -264,7 +239,6 @@ public class BackendSession {
 	}
 
 	private Integer selectOccupier(String listName, int listPlace) throws BackendException {
-		StringBuilder builder = new StringBuilder();
 		BoundStatement bs = new BoundStatement(SELECT_OCCUPIER);
 		bs.bind().setInt(0, listPlace).setString(1, listName);
 

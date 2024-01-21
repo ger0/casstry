@@ -70,6 +70,8 @@ public class InputProcessor {
     }
 
     private void executeHelp() {
+        System.out.println("Program allowing to create of ordered lists with specyfing of placement preferences");
+        System.out.println("Usage:");
         System.out.println("help - displays this message");
         System.out.println("get lists - displays lists");
         System.out.println("get proposals - displays proposals");
@@ -77,6 +79,7 @@ public class InputProcessor {
         System.out.println("upsert proposal STUDENT_ID LIST_NAME PLACEMENT_1 PLACEMENT_2 ... - proposes PLACEMENTS for sepcifeid student in specified list");
         System.out.println("\texample: upsert proposal 123456 seminarium 1 5 9 2 6 10 3 7 11 4 8 12");
         System.out.println("exit - finishes execution of this program");
+        System.out.println();
     }
 
     private void executeGet(String[] commandStrings) throws BackendException, ArrayIndexOutOfBoundsException {
