@@ -50,11 +50,13 @@ public class BackendSession {
 
 	private static PreparedStatement SELECT_ALL_FROM_LISTS;
 	private static PreparedStatement SELECT_ALL_FROM_PROPOSALS;
+	private static PreparedStatement SELECT_FROM_PROPOSALS;
 	private static PreparedStatement INSERT_INTO_LISTS;
 	private static PreparedStatement INSERT_INTO_PROPOSALS;
 	private static PreparedStatement DELETE_ALL_FROM_LISTS;
 	private static PreparedStatement DELETE_ALL_FROM_PROPOSALS;
 	private static PreparedStatement INCLUDE_PROPOSAL_INTO_LIST;
+	private static PreparedStatement SELECT_OCCUPIER;
 
 	private static final String LIST_FORMAT = "- %-10s %-16s\n";
 	private static final String PROPOSAL_FORMAT = "-%-10s  %-16s %-10s %-10s\n";
@@ -66,6 +68,7 @@ public class BackendSession {
 		try {
 			SELECT_ALL_FROM_LISTS = session.prepare("SELECT * FROM lists;");
 			SELECT_ALL_FROM_PROPOSALS = session.prepare("SELECT * FROM proposals;");
+			SELECT_FROM_PROPOSALS = session.prepare("SELECT * FROM proposals where student_id = ? and list_name = ?;");
 
 			INSERT_INTO_LISTS = session
 					.prepare("INSERT INTO lists (name, max_size, students, timestamps)" +
@@ -78,7 +81,10 @@ public class BackendSession {
 			DELETE_ALL_FROM_PROPOSALS = session.prepare("TRUNCATE proposals;");
 
 			INCLUDE_PROPOSAL_INTO_LIST = session
-					.prepare("UPDATE lists set students[ ? ] = ?, timestamps[ ? ]= ? where name = ? if timestamps[ ? ] > ?;");
+					.prepare(
+							"UPDATE lists set students[?] = ?, timestamps[?]= ? where name = ? if timestamps[?] > ?;");
+
+			SELECT_OCCUPIER = session.prepare("SELECT students[?] as student FROM lists where name = ?;");
 		} catch (Exception e) {
 			throw new BackendException("Could not prepare statements. " + e.getMessage() + ".", e);
 		}
@@ -159,6 +165,25 @@ public class BackendSession {
 		return builder.toString();
 	}
 
+	private Row selectFromProposals(int student_id, String listName) throws BackendException {
+		StringBuilder builder = new StringBuilder();
+		BoundStatement bs = new BoundStatement(SELECT_FROM_PROPOSALS);
+		bs.bind().setInt(0, student_id).setString(1, listName);
+
+		ResultSet rs = null;
+		Row row = null;
+		try {
+			rs = session.execute(bs);
+		} catch (Exception e) {
+			throw new BackendException("Could not perform a query. " + e.getMessage() + ".", e);
+		}
+		row = rs.one();
+		if(row == null){
+			System.out.println("There is no "+Integer.toString(student_id)+" in proposals");
+		}
+		return row;
+	}
+
 	public void upsertList(String name, int max_size) throws BackendException {
 		BoundStatement bs = new BoundStatement(INSERT_INTO_LISTS);
 		// bs.bind(name, max_size, "[]");
@@ -195,6 +220,7 @@ public class BackendSession {
 			throws BackendException {
 		BoundStatement bs = new BoundStatement(INCLUDE_PROPOSAL_INTO_LIST);
 		for (int placement : placements) {
+			Integer replaced = selectOccupier(listName, placement);
 			bs.bind().setInt(0, placement).setInt(1, student_id).setInt(2, placement).setTimestamp(3, timestamp)
 					.setString(4, listName).setInt(5, placement).setTimestamp(6, timestamp);
 			ResultSet rs = null;
@@ -205,6 +231,9 @@ public class BackendSession {
 			}
 			for (Row row : rs) {
 				if (row.getBool("[applied]")) {
+					if (replaced > 0) {
+						reapplyProposal(replaced, listName);
+					}
 					return;
 				}
 			}
@@ -221,6 +250,35 @@ public class BackendSession {
 		}
 
 		logger.info("All lists deleted");
+	}
+
+	public void reapplyProposal(int student_id, String listName) throws BackendException {
+		Row proposal = selectFromProposals(student_id, listName);
+		if(proposal != null){
+			includeProposalIntoList(student_id, listName, proposal.getList("placements", Integer.class),
+					proposal.getTimestamp("sending_time"));
+		}
+	}
+
+	private Integer selectOccupier(String listName, int listPlace) throws BackendException {
+		StringBuilder builder = new StringBuilder();
+		BoundStatement bs = new BoundStatement(SELECT_OCCUPIER);
+		bs.bind().setInt(0, listPlace).setString(1, listName);
+
+		ResultSet rs = null;
+
+		try {
+			rs = session.execute(bs);
+		} catch (Exception e) {
+			throw new BackendException("Could not perform a query. " + e.getMessage() + ".", e);
+		}
+
+		Integer ret = null;
+		for (Row row : rs) {
+			ret = row.getInt("student");
+		}
+
+		return ret;
 	}
 
 	protected void finalize() {
