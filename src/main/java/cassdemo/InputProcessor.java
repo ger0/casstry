@@ -16,7 +16,7 @@ public class InputProcessor {
     private boolean finish;
 
     public InputProcessor(InputStream inputStream, BackendSession session, Statistics statistics) {
-        this.statistics=statistics;
+        this.statistics = statistics;
         scanner = new Scanner(inputStream);
         this.session = session;
         this.finish = false;
@@ -91,6 +91,7 @@ public class InputProcessor {
                 "post proposal STUDENT_ID LIST_NAME PLACEMENT_1 PLACEMENT_2 ... - proposes PLACEMENTS for sepcifeid student in specified list");
         System.out.println("\texample: post proposal 123456 seminarium 1 5 9 2 6 10 3 7 11 4 8 12");
         System.out.println("reapply STUDENT_ID LIST_NAME - reapplies student's proposal into specified list");
+        System.out.println("reapply all LIST_NAME - reapplies all students' proposal into specified list");
         System.out.println(
                 "stress lists BASE_NAME FIRST_NUMBER LAST_NUMBER SIZE_OF_LIST - creates lists with specified name and range of suffixes");
         System.out.println("\texample: stress lists test 1 5 40");
@@ -121,7 +122,14 @@ public class InputProcessor {
     }
 
     private void reapply(String[] commandStrings) throws BackendException, ArrayIndexOutOfBoundsException {
-        session.reapplyProposal(Integer.parseInt(commandStrings[1]), commandStrings[2]);
+        switch (commandStrings[1]) {
+            case "all":
+                session.reapplyProposalsToOneList(commandStrings[2]);
+                return;
+            default:
+                session.reapplyProposal(Integer.parseInt(commandStrings[1]), commandStrings[2]);
+                return;
+        }
     }
 
     private void executePost(String[] commandStrings) throws BackendException, ArrayIndexOutOfBoundsException {

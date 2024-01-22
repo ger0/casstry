@@ -60,6 +60,7 @@ public class BackendSession {
 	private static PreparedStatement DELETE_ALL_FROM_PROPOSALS;
 	private static PreparedStatement INCLUDE_PROPOSAL_INTO_LIST;
 	private static PreparedStatement SELECT_OCCUPIER;
+	private static PreparedStatement SELECT_ALL_PROPOSALS_TO_LIST;
 
 	private void prepareStatements() throws BackendException {
 
@@ -83,6 +84,9 @@ public class BackendSession {
 							"UPDATE lists set students[?] = ?, timestamps[?]= ? where name = ? if timestamps[?] > ?;");
 
 			SELECT_OCCUPIER = session.prepare("SELECT students[?] as student FROM lists where name = ?;");
+
+			//uses ALLOW FILTERING but is meant mostly for diagnosis
+			SELECT_ALL_PROPOSALS_TO_LIST = session.prepare("select student_id from proposals where list_name = ? ALLOW FILTERING;");
 		} catch (Exception e) {
 			throw new BackendException("Could not prepare statements. " + e.getMessage() + ".", e);
 		}
@@ -228,6 +232,26 @@ public class BackendSession {
 		}
 
 		logger.info("All lists deleted");
+	}
+
+	public ResultSet selectAllProposalsToList(String listName) throws BackendException{
+		BoundStatement bs = new BoundStatement(SELECT_ALL_PROPOSALS_TO_LIST);
+		bs.bind().setString(0, listName);
+		ResultSet rs = null;
+
+		try {
+			rs = session.execute(bs);
+		} catch (Exception e) {
+			throw new BackendException("Could not perform a query. " + e.getMessage() + ".", e);
+		}
+		return rs;
+	}
+
+	public void reapplyProposalsToOneList(String listName) throws BackendException{
+		ResultSet rs = selectAllProposalsToList(listName);
+		for(Row row:rs){
+			reapplyProposal(row.getInt("student_id"), listName);
+		}
 	}
 
 	public void reapplyProposal(int student_id, String listName) throws BackendException {
