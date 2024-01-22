@@ -29,7 +29,7 @@ public class Student implements Runnable {
     public void run() {
         for(int i=firstListNumber;i<=lastListNumber;++i){
             try {
-                session.upsertProposal(id, listBaseName+Integer.toString(i), placements);
+                session.insertProposal(id, listBaseName+Integer.toString(i), placements);
             } catch (BackendException e) {
                 //e.printStackTrace();
                 session.increaseBackendExcepionCount();

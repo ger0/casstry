@@ -20,7 +20,7 @@ public class ListsCreator {
 
     public void create() throws BackendException {
         for (int i = firstNumber; i <= lastNumber; ++i) {
-            session.upsertList(baseName+Integer.toString(i), sizeOfList);
+            session.insertList(baseName+Integer.toString(i), sizeOfList);
         }
     }
 }

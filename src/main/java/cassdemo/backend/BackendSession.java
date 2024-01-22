@@ -73,7 +73,7 @@ public class BackendSession {
 							"VALUES (?, ?, ?, ?);");
 			INSERT_INTO_PROPOSALS = session
 					.prepare("INSERT INTO proposals (student_id, list_name, placements, sending_time)" +
-							"VALUES (?, ?, ?, ?);");
+							"VALUES (?, ?, ?, ?) IF NOT EXISTS;");
 
 			DELETE_ALL_FROM_LISTS = session.prepare("TRUNCATE lists;");
 			DELETE_ALL_FROM_PROPOSALS = session.prepare("TRUNCATE proposals;");
@@ -158,7 +158,7 @@ public class BackendSession {
 		return row;
 	}
 
-	public void upsertList(String name, int max_size) throws BackendException {
+	public void insertList(String name, int max_size) throws BackendException {
 		BoundStatement bs = new BoundStatement(INSERT_INTO_LISTS);
 		// bs.bind(name, max_size, "[]");
 		bs.bind().setString(0, name).setInt(1, max_size).setMap(2, initialStudentsMap(max_size)).setMap(3,
@@ -173,7 +173,7 @@ public class BackendSession {
 		logger.info("List " + name + " upserted");
 	}
 
-	public void upsertProposal(int studentId, String listName, List<Integer> placements) throws BackendException {
+	public void insertProposal(int studentId, String listName, List<Integer> placements) throws BackendException {
 		BoundStatement bs = new BoundStatement(INSERT_INTO_PROPOSALS);
 		// bs.bind(name, max_size, "[]");
 		Date timestamp = new Date(System.currentTimeMillis());
