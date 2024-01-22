@@ -10,6 +10,7 @@ import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.Row;
 import com.datastax.driver.core.Session;
 
+import cassdemo.Statistics;
 import cassdemo.ToStringer;
 
 import java.util.Collections;
@@ -17,8 +18,6 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import javax.xml.crypto.Data;
 
 /*
  * For error handling done right see: 
@@ -34,10 +33,12 @@ import javax.xml.crypto.Data;
 public class BackendSession {
 
 	private static final Logger logger = LoggerFactory.getLogger(BackendSession.class);
+	private Statistics statistics;
 
 	private Session session;
 
-	public BackendSession(String contactPoint, String keyspace) throws BackendException {
+	public BackendSession(String contactPoint, String keyspace, Statistics statistics) throws BackendException {
+		this.statistics = statistics;
 
 		Cluster cluster = Cluster.builder().addContactPoint(contactPoint).build();
 		try {
@@ -59,7 +60,6 @@ public class BackendSession {
 	private static PreparedStatement DELETE_ALL_FROM_PROPOSALS;
 	private static PreparedStatement INCLUDE_PROPOSAL_INTO_LIST;
 	private static PreparedStatement SELECT_OCCUPIER;
-
 
 	private void prepareStatements() throws BackendException {
 
@@ -144,7 +144,6 @@ public class BackendSession {
 	}
 
 	private Row selectFromProposals(int student_id, String listName) throws BackendException {
-		StringBuilder builder = new StringBuilder();
 		BoundStatement bs = new BoundStatement(SELECT_FROM_PROPOSALS);
 		bs.bind().setInt(0, student_id).setString(1, listName);
 
@@ -162,7 +161,6 @@ public class BackendSession {
 	public void upsertList(String name, int max_size) throws BackendException {
 		BoundStatement bs = new BoundStatement(INSERT_INTO_LISTS);
 		// bs.bind(name, max_size, "[]");
-		Map<Integer, Integer> students = new HashMap<Integer, Integer>();
 		bs.bind().setString(0, name).setInt(1, max_size).setMap(2, initialStudentsMap(max_size)).setMap(3,
 				initialTimestampMap(max_size));
 
@@ -196,8 +194,8 @@ public class BackendSession {
 		BoundStatement bs = new BoundStatement(INCLUDE_PROPOSAL_INTO_LIST);
 		for (int placement : placements) {
 			Integer replaced = selectOccupier(listName, placement);
-			if(replaced == student_id){
-				return; //this student already holds this place
+			if (replaced == student_id) {
+				return; // this student already holds this place
 			}
 			bs.bind().setInt(0, placement).setInt(1, student_id).setInt(2, placement).setTimestamp(3, timestamp)
 					.setString(4, listName).setInt(5, placement).setTimestamp(6, timestamp);
@@ -211,12 +209,13 @@ public class BackendSession {
 				if (row.getBool("[applied]")) {
 					if (replaced > 0) {
 						reapplyProposal(replaced, listName);
+						statistics.increasePreemptionCount();
 					}
 					return;
 				}
 			}
 		}
-		logger.info("Applied "+student_id+"'s proposal into "+listName);
+		logger.info("Applied " + student_id + "'s proposal into " + listName);
 	}
 
 	public void deleteAllLists() throws BackendException {
@@ -233,7 +232,7 @@ public class BackendSession {
 
 	public void reapplyProposal(int student_id, String listName) throws BackendException {
 		Row proposal = selectFromProposals(student_id, listName);
-		if(proposal != null){
+		if (proposal != null) {
 			includeProposalIntoList(student_id, listName, proposal.getList("placements", Integer.class),
 					proposal.getTimestamp("sending_time"));
 		}
@@ -271,14 +270,6 @@ public class BackendSession {
 
 	private Map<Integer, Integer> initialStudentsMap(int max_size) {
 		return Collections.emptyMap();
-		/*
-		 * HashMap<Integer, Integer> ret = new HashMap<>();
-		 * int noneStudent = -1;
-		 * for(int i=1; i<=max_size;++i){
-		 * ret.put(i, noneStudent);
-		 * }
-		 * return ret;
-		 */
 	}
 
 	private Map<Integer, Date> initialTimestampMap(int max_size) {

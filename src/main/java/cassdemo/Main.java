@@ -15,6 +15,7 @@ public class Main {
 	public static void main(String[] args) throws IOException, BackendException {
 		String contactPoint = null;
 		String keyspace = null;
+		Statistics statistics = new Statistics();
 
 		Properties properties = new Properties();
 		try {
@@ -26,10 +27,10 @@ public class Main {
 			ex.printStackTrace();
 		}
 			
-		BackendSession session = new BackendSession(contactPoint, keyspace);
+		BackendSession session = new BackendSession(contactPoint, keyspace, statistics);
 		Logger logger = LoggerFactory.getLogger(BackendSession.class);
 
-		InputProcessor inputProcessor = new InputProcessor(System.in, session);
+		InputProcessor inputProcessor = new InputProcessor(System.in, session, statistics);
 		inputProcessor.processInput();
 		/*session.upsertList("Wakacje", 10);
 		logger.info(session.selectAllLists());

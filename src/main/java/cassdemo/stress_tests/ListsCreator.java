@@ -10,7 +10,7 @@ public class ListsCreator {
     private BackendSession session;
     private String baseName;
 
-    public ListsCreator(int firstNumber, int lastNumber, int sizeOfList, BackendSession session, String baseName) {
+    public ListsCreator(String baseName, int firstNumber, int lastNumber, int sizeOfList, BackendSession session) {
         this.firstNumber = firstNumber;
         this.lastNumber = lastNumber;
         this.sizeOfList = sizeOfList;

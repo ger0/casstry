@@ -5,7 +5,7 @@ import cassdemo.backend.BackendSession;
 public class ProposalsCreator {
     private Thread[] threads;
 
-    public ProposalsCreator(int firstListNumber, int lastListNumber, String listBaseName, int numberOfPlacements,
+    public ProposalsCreator(String listBaseName, int firstListNumber, int lastListNumber, int numberOfPlacements,
             int firstStudentId, int lastStudentId, BackendSession session) {
         threads = new Thread[lastStudentId - firstStudentId + 1];
         for (int i = 0; i < threads.length; ++i) {
