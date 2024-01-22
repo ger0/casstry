@@ -38,10 +38,10 @@ public class ToStringer {
         StringBuilder sb = new StringBuilder();
         sb.append("Name: "+row.getString("name")+", ");
         sb.append("max_size: "+row.getInt("max_size")+"\n");
-        sb.append("postion\tstudent_id\n");
+        sb.append("position\tstudent_id\n");
         Map<Integer, Integer> students=row.getMap("students", Integer.class, Integer.class);
         for(int key:students.keySet()){
-            sb.append(Integer.toString(key)+ "\t"+Integer.toString(students.get(key))+"\n");
+            sb.append(Integer.toString(key)+ "\t\t"+Integer.toString(students.get(key))+"\n");
         }
         return sb.toString();
     }
