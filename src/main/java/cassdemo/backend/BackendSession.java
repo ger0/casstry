@@ -280,4 +280,8 @@ public class BackendSession {
 		}
 		return ret;
 	}
+
+	public void increaseBackendExcepionCount() {
+		statistics.increaseBackendExcepionCount();
+	}
 }

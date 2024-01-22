@@ -31,7 +31,8 @@ public class Student implements Runnable {
             try {
                 session.upsertProposal(id, listBaseName+Integer.toString(i), placements);
             } catch (BackendException e) {
-                e.printStackTrace();
+                //e.printStackTrace();
+                session.increaseBackendExcepionCount();
             }
         }
     }
