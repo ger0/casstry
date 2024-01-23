@@ -85,8 +85,9 @@ public class BackendSession {
 
 			SELECT_OCCUPIER = session.prepare("SELECT students[?] as student FROM lists where name = ?;");
 
-			//uses ALLOW FILTERING but is meant mostly for diagnosis
-			SELECT_ALL_PROPOSALS_TO_LIST = session.prepare("select student_id from proposals where list_name = ? ALLOW FILTERING;");
+			// uses ALLOW FILTERING but is meant mostly for diagnosis
+			SELECT_ALL_PROPOSALS_TO_LIST = session
+					.prepare("select student_id from proposals where list_name = ? ALLOW FILTERING;");
 		} catch (Exception e) {
 			throw new BackendException("Could not prepare statements. " + e.getMessage() + ".", e);
 		}
@@ -198,8 +199,10 @@ public class BackendSession {
 		BoundStatement bs = new BoundStatement(INCLUDE_PROPOSAL_INTO_LIST);
 		for (int placement : placements) {
 			Integer replaced = selectOccupier(listName, placement);
-			if (replaced == student_id) {
-				return; // this student already holds this place
+			if (replaced != null) {
+				if (replaced == student_id) {
+					return; // this student already holds this place
+				}
 			}
 			bs.bind().setInt(0, placement).setInt(1, student_id).setInt(2, placement).setTimestamp(3, timestamp)
 					.setString(4, listName).setInt(5, placement).setTimestamp(6, timestamp);
@@ -211,7 +214,7 @@ public class BackendSession {
 			}
 			for (Row row : rs) {
 				if (row.getBool("[applied]")) {
-					if (replaced > 0) {
+					if (replaced != null) {
 						reapplyProposal(replaced, listName);
 						statistics.increasePreemptionCount();
 					}
@@ -234,7 +237,7 @@ public class BackendSession {
 		logger.info("All lists deleted");
 	}
 
-	public ResultSet selectAllProposalsToList(String listName) throws BackendException{
+	public ResultSet selectAllProposalsToList(String listName) throws BackendException {
 		BoundStatement bs = new BoundStatement(SELECT_ALL_PROPOSALS_TO_LIST);
 		bs.bind().setString(0, listName);
 		ResultSet rs = null;
@@ -247,9 +250,9 @@ public class BackendSession {
 		return rs;
 	}
 
-	public void reapplyProposalsToOneList(String listName) throws BackendException{
+	public void reapplyProposalsToOneList(String listName) throws BackendException {
 		ResultSet rs = selectAllProposalsToList(listName);
-		for(Row row:rs){
+		for (Row row : rs) {
 			reapplyProposal(row.getInt("student_id"), listName);
 		}
 	}
