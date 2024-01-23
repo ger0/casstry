@@ -98,7 +98,7 @@ public class BackendSession {
 	private void setupTables(String keyspace) throws BackendException {
 		try {
 			session.execute("CREATE KEYSPACE IF NOT EXISTS " + keyspace +
-					" WITH REPLICATION = { 'class' : 'SimpleStrategy', 'replication_factor' : 3 }; ");
+					" WITH REPLICATION = { 'class' : 'SimpleStrategy', 'replication_factor' : 2 }; ");
 			session.execute("USE " + keyspace + ";");
 			session.execute(
 					"CREATE TABLE IF NOT EXISTS Lists (" +
